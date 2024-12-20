@@ -443,7 +443,7 @@ module.exports = {
   author: "Jankinsu",
   appVersion: ">0.1.0-alpha.0",
   srcUrl:
-    "https://raw.githubusercontent.com/Jankinsu/MFPlugins/master/scripts/kugou.js",
+    "https://ghgo.xyz/https://github.com/lmhpg9981/MusicFreePlugins/raw/master/plugins/kugou.js",
   cacheControl: "no-cache",
   primaryKey: ["id", "album_id", "album_audio_id"],
   hints: {
