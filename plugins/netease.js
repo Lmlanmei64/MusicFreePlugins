@@ -543,7 +543,7 @@ module.exports = {
     author: '小趴菜',
     version: "0.2.5",
     appVersion: ">0.1.0-alpha.0",
-    srcUrl: "https://github.com/lmhpg9981/MusicFreePlugins/raw/master/plugins/netease.js",
+    srcUrl: "https://mirror.ghproxy.com/https://raw.githubusercontent.com/lmhpg9981/MusicFreePlugins/raw/master/plugins/netease.js",
     cacheControl: "no-store",
     hints: {
         importMusicSheet: [
