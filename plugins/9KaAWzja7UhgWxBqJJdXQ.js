@@ -511,7 +511,7 @@ async function getMusicSheetInfo(sheet, page) {
     return Object.assign({ isEnd: trackIds.length <= page * pageSize, musicList: res }, extra);
 }
 module.exports = {
-    platform: "网易云",
+    platform: "网易云歌词",
     author: '猫头猫',
     version: "0.2.3",
     appVersion: ">0.1.0-alpha.0",
