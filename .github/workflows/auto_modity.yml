@@ -1,0 +1,140 @@
+name: Update wy.js Plugin
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/wy.js'
+
+jobs:
+  update-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download wy.js
+        run: |
+          curl -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/refs/heads/main/plugins/wy.js"
+
+      - name: Modify wy.js functions
+        run: |
+          # 定义要插入的代码块
+          getLyric_code='async function getLyric(musicItem) {
+    try {
+        const response = await axios.get('\''https://music.163.com/api/song/lyric'\'', {
+            params: {
+                id: musicItem.id, // 仅传递 id 参数
+                lv: -1, // 传入 lv 参数
+                tv: -1  // 传入 tv 参数
+            },
+            headers: {
+                os: "pc" // 设置 os 为 pc
+            }
+        });
+
+        return {
+            rawLrc: response.data.lrc?.lyric || '\'\'',  // 返回原歌词，如果不存在则为空字符串
+            translation: response.data.tlyric?.lyric || '\'\''  // 返回翻译歌词，如果不存在则为空字符串
+        };
+    } catch (error) {
+        console.error('\''获取歌词时出错:'\'', error.message);
+        return {
+            rawLrc: '\'\'',
+            translation: '\'\''
+        };
+    }
+}'
+
+          formatComment_code='function formatComment(item) {
+    return {
+        id: item.commentId,
+        nickName: item.user.nickname,
+        avatar: item.user.avatarUrl,
+        comment: item.content,
+        like: item.likedCount,
+        createAt: item.time,
+        location: item.ipLocation ? item.ipLocation.location : undefined
+    };
+}'
+
+          getMusicComments_code='async function getMusicComments(musicItem, limit = 20) {
+    const url = '\''https://zm.armoe.cn/comment/music'\'';
+    let allComments = [];
+    let offset = 0;
+    let before = null;
+    let isEnd = false;
+
+    // 自动分页加载评论直到没有更多评论
+    while (!isEnd) {
+        const params = {
+            id: musicItem.id, // 歌曲 ID
+            limit: limit,      // 每次请求的评论数
+            offset: offset,    // 分页偏移
+            before: before     // 上一页最后一项的时间戳，用于分页
+        };
+
+        try {
+            const response = await axios.get(url, { params });
+            const result = response.data;
+
+            if (!result || !result.comments) {
+                throw new Error('\''评论数据为空或获取失败'\'');
+            }
+
+            // 格式化评论数据
+            const comments = result.comments.map(formatComment);
+            allComments = [...allComments, ...comments];
+            isEnd = result.more === false; // 如果返回的 more 为 false，则表示已加载完毕
+
+            if (!isEnd) {
+                // 获取下一页的分页信息
+                before = comments[comments.length - 1]?.createAt;
+                offset += limit; // 增加偏移量，准备加载下一页评论
+            }
+        } catch (error) {
+            console.error('\''获取评论时出错:'\'', error.message);
+            break; // 出现错误时中止加载
+        }
+    }
+
+    return {
+        isEnd,          // 是否加载完所有评论
+        total: allComments.length, // 评论总数
+        data: allComments // 返回所有格式化后的评论
+    };
+}'
+
+          # 使用awk进行多行替换
+          awk -v getLyric="$getLyric_code" \
+              -v formatComment="$formatComment_code" \
+              -v getMusicComments="$getMusicComments_code" '
+          BEGIN { RS = "" }
+          {
+              # 替换getLyric函数
+              gsub(/async function getLyric\([^{]*{[^}]*}/, getLyric)
+              
+              # 替换formatComment函数
+              gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
+              
+              # 替换getMusicComments函数
+              gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
+              
+              print
+          }' wy.js > wy_modified.js
+
+          mv wy_modified.js wy.js
+
+      - name: Upload modified file
+        run: |
+          mkdir -p plugins
+          mv wy.js plugins/
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          git add plugins/wy.js
+          git diff-index --quiet HEAD || git commit -m "chore: auto update wy.js plugin functions [skip ci]"
+          git push

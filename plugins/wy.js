@@ -554,70 +554,44 @@ async function KUWO(musicItem, quality) {
 
 
 
-const axios = require('axios');
-
-// 格式化评论的函数
-function formatComment(item) {
+// 格式化歌曲评论
+function formatComment(_) {
     return {
-        id: item.commentId,
-        nickName: item.user.nickname,
-        avatar: item.user.avatarUrl,
-        comment: item.content,
-        like: item.likedCount,
-        createAt: item.time,
-        location: item.ipLocation ? item.ipLocation.location : undefined
+        id: _.commentId,
+        // 用户名
+        nickName: _.user && _.user.nickname,
+        // 头像
+        avatar: _.user && _.user.avatarUrl,
+        // 评论内容
+        comment: _.content,
+        // 点赞数
+        like: _.likedCount,
+        // 评论时间
+        createAt: _.time,
+        // 地址
+        location: _.ipLocation && _.ipLocation.location,
+        // 回复
+        replies: (_.beReplied || []).map(formatComment),
+        /* 其他参数 */
+        content: 6
     };
 }
-
-// 获取歌曲评论并自动分页加载直到所有评论获取完
-async function getMusicComments(musicItem, limit = 20) {
-    const url = 'https://apis.netstart.cn/music/comment/music';
-    let allComments = [];
-    let offset = 0;
-    let before = null;
-    let isEnd = false;
-
-    // 自动分页加载评论直到没有更多评论
-    while (!isEnd) {
-        const params = {
-            id: musicItem.id, // 歌曲 ID
-            limit: limit,      // 每次请求的评论数
-            offset: offset,    // 分页偏移
-            before: before     // 上一页最后一项的时间戳，用于分页
-        };
-
-        try {
-            const response = await axios.get(url, { params });
-            const result = response.data;
-
-            if (!result || !result.comments) {
-                throw new Error('评论数据为空或获取失败');
-            }
-
-            // 格式化评论数据
-            const comments = result.comments.map(formatComment);
-            allComments = [...allComments, ...comments];
-            isEnd = result.more === false; // 如果返回的 more 为 false，则表示已加载完毕
-
-            if (!isEnd) {
-                // 获取下一页的分页信息
-                before = comments[comments.length - 1]?.createAt;
-                offset += limit; // 增加偏移量，准备加载下一页评论
-            }
-        } catch (error) {
-            console.error('获取评论时出错:', error.message);
-            break; // 出现错误时中止加载
-        }
+// 获取歌曲评论
+async function getMusicComments(musicItem, page = 1) {
+    let res = (await EAPI("/api/v2/resource/comments", {
+        "threadId": "R_SO_4_" + musicItem.id,
+        "cursor": "20",
+        "sortType": "1",
+        "pageNo": page,
+        "pageSize": pageSize + "",
+        "parentCommentld": "0",
+        "showlnner": false
+    })).data;
+    return {
+        isEnd: res.hasMore != true,
+        data: res.comments.map(formatComment)
     }
-
-    return {
-        isEnd,          // 是否加载完所有评论
-        total: allComments.length, // 评论总数
-        data: allComments // 返回所有格式化后的评论
-    };
 }
-
-
 
 
 
