@@ -35,14 +35,14 @@ jobs:
         });
 
         return {
-            rawLrc: response.data.lrc?.lyric || \'\',
-            translation: response.data.tlyric?.lyric || \'\'
+            rawLrc: response.data.lrc?.lyric || '\'\'',
+            translation: response.data.tlyric?.lyric || '\'\''
         };
     } catch (error) {
         console.error("获取歌词时出错:", error.message);
         return {
-            rawLrc: \'\',
-            translation: \'\'
+            rawLrc: '\'\'',
+            translation: '\'\''
         };
     }
 }'
