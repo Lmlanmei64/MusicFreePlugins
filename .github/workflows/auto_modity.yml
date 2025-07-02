@@ -1,22 +1,58 @@
 name: Update wy.js Plugin
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'plugins/wy.js'
+  repository_dispatch:
+    types: [check_for_updates]
+  workflow_dispatch:
+  schedule:
+    # 每10分钟检查一次上游更新
+    - cron: '*/10 * * * *'
 
 jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    outputs:
+      has_update: ${{ steps.check-update.outputs.has_update }}
+    steps:
+      - name: Check upstream repository status
+        id: check-update
+        run: |
+          # 获取上游仓库最新commit SHA
+          UPSTREAM_SHA=$(curl -s "https://api.github.com/repos/ThomasBy2025/musicfree/commits/main" | jq -r .sha)
+          
+          # 获取上次记录的commit SHA
+          if [ -f .last_commit ]; then
+            LAST_SHA=$(cat .last_commit)
+          else
+            LAST_SHA=""
+          fi
+          
+          # 比较commit SHA
+          if [ "$UPSTREAM_SHA" != "$LAST_SHA" ]; then
+            echo "has_update=true" >> $GITHUB_OUTPUT
+            echo "New update detected in upstream repository"
+          else
+            echo "has_update=false" >> $GITHUB_OUTPUT
+            echo "No updates in upstream repository"
+          fi
+          
+          # 保存当前SHA供下次比较
+          echo "$UPSTREAM_SHA" > .last_commit
+
   update-plugin:
+    needs: check-upstream
+    if: ${{ needs.check-upstream.outputs.has_update == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 获取最新提交历史
+          fetch-depth: 0
 
       - name: Download wy.js
         run: |
-          curl -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/refs/heads/main/plugins/wy.js"
+          curl -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/main/plugins/wy.js"
 
       - name: Load function codes from files
         run: |
@@ -25,18 +61,10 @@ jobs:
           formatComment_code=$(<formatComment.txt)
           getMusicComments_code=$(<getMusicComments.txt)
           
-          # 保存为环境变量供后续步骤使用
-          echo "getLyric_code<<EOF" >> $GITHUB_ENV
-          echo "$getLyric_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          echo "formatComment_code<<EOF" >> $GITHUB_ENV
-          echo "$formatComment_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          echo "getMusicComments_code<<EOF" >> $GITHUB_ENV
-          echo "$getMusicComments_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          # 保存为环境变量
+          echo "getLyric_code=$getLyric_code" >> $GITHUB_ENV
+          echo "formatComment_code=$formatComment_code" >> $GITHUB_ENV
+          echo "getMusicComments_code=$getMusicComments_code" >> $GITHUB_ENV
 
       - name: Modify wy.js functions
         run: |
@@ -63,5 +91,79 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "GitHub Actions"
           git add plugins/wy.js
-          git diff-index --quiet HEAD || git commit -m "chore: auto update wy.js plugin functions [skip ci]"
+          git add .last_commit
+          
+          # 根据触发方式设置不同的提交信息
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            COMMIT_MSG="chore: manual update wy.js plugin [skip ci]"
+          else
+            COMMIT_MSG="chore: auto update wy.js plugin from upstream [skip ci]"
+          fi
+          
+          git diff-index --quiet HEAD || git commit -m "$COMMIT_MSG"
           git push
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
