@@ -49,9 +49,12 @@ jobs:
         with:
           fetch-depth: 0
 
+- name: Install wget
+  run: sudo apt-get install -y wget
+
       - name: Download wy.js
         run: |
-          curl -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/main/plugins/wy.js"
+          wget -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/main/plugins/wy.js"
 
       - name: Load function codes from files
         run: |
