@@ -1,3 +1,4 @@
+
 name: Update wy.js Plugin
 
 on:
@@ -5,7 +6,6 @@ on:
     types: [check_for_updates]
   workflow_dispatch:
   schedule:
-    # 每10分钟检查一次上游更新
     - cron: '*/10 * * * *'
 
 jobs:
@@ -47,7 +47,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 获取最新提交历史
           fetch-depth: 0
 
       - name: Download wy.js
@@ -76,13 +75,11 @@ jobs:
 
       - name: Modify wy.js functions
         run: |
-          # 使用安全方式传递多行变量
           awk -v getLyric="${{ env.getLyric_code }}" \
               -v formatComment="${{ env.formatComment_code }}" \
               -v getMusicComments="${{ env.getMusicComments_code }}" '
           BEGIN { RS = "" }
           {
-              # 替换函数定义
               gsub(/async function getLyric\([^{]*{[^}]*}/, getLyric)
               gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
               gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
@@ -100,15 +97,26 @@ jobs:
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "GitHub Actions"
-          git add plugins/wy.js
-          git add .last_commit
           
-          # 根据触发方式设置不同的提交信息
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            COMMIT_MSG="chore: manual update wy.js plugin [skip ci]"
-          else
-            COMMIT_MSG="chore: auto update wy.js plugin from upstream [skip ci]"
+          # 添加修改的文件
+          git add plugins/wy.js
+          
+          # 仅在非手动运行且文件存在时添加 .last_commit
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -f .last_commit ]; then
+            git add .last_commit
           fi
           
-          git diff-index --quiet HEAD || git commit -m "$COMMIT_MSG"
-          git push
+          # 检查是否有需要提交的更改
+          if git diff-index --quiet HEAD; then
+            echo "没有需要提交的更改"
+          else
+            # 根据触发方式设置不同的提交信息
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              COMMIT_MSG="chore: manual update wy.js plugin [skip ci]"
+            else
+              COMMIT_MSG="chore: auto update wy.js plugin from upstream [skip ci]"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            git push
+          fi
