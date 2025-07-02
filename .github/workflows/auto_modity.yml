@@ -18,95 +18,31 @@ jobs:
         run: |
           curl -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/refs/heads/main/plugins/wy.js"
 
+      - name: Load function codes from files
+        run: |
+          # 从文件加载函数代码
+          getLyric_code=$(<getLyric.txt)
+          formatComment_code=$(<formatComment.txt)
+          getMusicComments_code=$(<getMusicComments.txt)
+          
+          # 保存为环境变量供后续步骤使用
+          echo "getLyric_code<<EOF" >> $GITHUB_ENV
+          echo "$getLyric_code" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          echo "formatComment_code<<EOF" >> $GITHUB_ENV
+          echo "$formatComment_code" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          echo "getMusicComments_code<<EOF" >> $GITHUB_ENV
+          echo "$getMusicComments_code" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Modify wy.js functions
         run: |
-          # 定义要插入的代码块
-          getLyric_code='async function getLyric(musicItem) {
-    try {
-        const response = await axios.get("https://music.163.com/api/song/lyric", {
-            params: {
-                id: musicItem.id,
-                lv: -1,
-                tv: -1
-            },
-            headers: {
-                os: "pc"
-            }
-        });
-
-        return {
-            rawLrc: response.data.lrc?.lyric || '\'\'',
-            translation: response.data.tlyric?.lyric || '\'\''
-        };
-    } catch (error) {
-        console.error("获取歌词时出错:", error.message);
-        return {
-            rawLrc: '\'\'',
-            translation: '\'\''
-        };
-    }
-}'
-
-          formatComment_code='function formatComment(item) {
-    return {
-        id: item.commentId,
-        nickName: item.user.nickname,
-        avatar: item.user.avatarUrl,
-        comment: item.content,
-        like: item.likedCount,
-        createAt: item.time,
-        location: item.ipLocation ? item.ipLocation.location : undefined
-    };
-}'
-
-          getMusicComments_code='async function getMusicComments(musicItem, limit = 20) {
-    const url = "https://zm.armoe.cn/comment/music";
-    let allComments = [];
-    let offset = 0;
-    let before = null;
-    let isEnd = false;
-
-    while (!isEnd) {
-        const params = {
-            id: musicItem.id,
-            limit: limit,
-            offset: offset,
-            before: before
-        };
-
-        try {
-            const response = await axios.get(url, { params });
-            const result = response.data;
-
-            if (!result || !result.comments) {
-                throw new Error("评论数据为空或获取失败");
-            }
-
-            const comments = result.comments.map(formatComment);
-            allComments = [...allComments, ...comments];
-            isEnd = result.more === false;
-
-            if (!isEnd) {
-                before = comments[comments.length - 1]?.createAt;
-                offset += limit;
-            }
-        } catch (error) {
-            console.error("获取评论时出错:", error.message);
-            break;
-        }
-    }
-
-    return {
-        isEnd,
-        total: allComments.length,
-        data: allComments
-    };
-}'
-
-          # 使用awk进行多行替换
-          awk -v getLyric="$getLyric_code" \
-              -v formatComment="$formatComment_code" \
-              -v getMusicComments="$getMusicComments_code" '
+          awk -v getLyric="${{ env.getLyric_code }}" \
+              -v formatComment="${{ env.formatComment_code }}" \
+              -v getMusicComments="${{ env.getMusicComments_code }}" '
           BEGIN { RS = "" }
           {
               gsub(/async function getLyric\([^{]*{[^}]*}/, getLyric)
@@ -114,7 +50,7 @@ jobs:
               gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
               print
           }' wy.js > wy_modified.js
-
+          
           mv wy_modified.js wy.js
 
       - name: Upload modified file

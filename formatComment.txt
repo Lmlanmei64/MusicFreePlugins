@@ -1,0 +1,11 @@
+function formatComment(item) {
+    return {
+        id: item.commentId,
+        nickName: item.user.nickname,
+        avatar: item.user.avatarUrl,
+        comment: item.content,
+        like: item.likedCount,
+        createAt: item.time,
+        location: item.ipLocation ? item.ipLocation.location : undefined
+    };
+}
