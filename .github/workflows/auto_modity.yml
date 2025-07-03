@@ -149,4 +149,65 @@ jobs:
               gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
               gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
               print
-          }' wy.js > wy
+          }' wy.js > wy_modified.js
+          
+          # 验证修改结果
+          if [ ! -s wy_modified.js ]; then
+            echo "::error::修改后的文件为空"
+            exit 1
+          fi
+          
+          mv wy_modified.js wy.js
+          echo "函数替换完成，新文件大小: $(wc -c <wy.js) 字节"
+          
+      - name: Replace srcUrl
+        run: |
+          # 替换 srcUrl 为新地址
+          new_srcUrl="https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/plugins/wy.js"
+          
+          # 使用 sed 替换 srcUrl
+          sed -i "s|srcUrl: ['\"][^'\"]*['\"]|srcUrl: '$new_srcUrl'|" wy.js
+          
+          # 验证替换结果
+          if grep -q "$new_srcUrl" wy.js; then
+            echo "srcUrl 替换成功"
+          else
+            echo "::error::srcUrl 替换失败"
+            exit 1
+          fi
+          
+          echo "srcUrl 更新为: $new_srcUrl"
+
+      - name: Upload modified file
+        run: |
+          mkdir -p plugins
+          mv wy.js plugins/
+          echo "文件已移动到 plugins/ 目录"
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          
+          # 添加修改的文件
+          git add plugins/wy.js
+          
+          # 仅在非手动运行且文件存在时添加 .last_commit
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -f .last_commit ]; then
+            git add .last_commit
+          fi
+          
+          # 检查是否有需要提交的更改
+          if git diff-index --quiet HEAD; then
+            echo "没有需要提交的更改"
+          else
+            # 根据触发方式设置不同的提交信息
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              COMMIT_MSG="chore: manual update wy.js plugin [skip ci]"
+            else
+              COMMIT_MSG="chore: auto update wy.js plugin from upstream [skip ci]"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            git push
+          fi
