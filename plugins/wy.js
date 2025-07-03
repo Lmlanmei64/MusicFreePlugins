@@ -604,7 +604,7 @@ module.exports = {
     author: '反馈Q群@365976134',
     version: "2025.01.22",
     appVersion: ">0.4.0-alpha.0",
-    srcUrl: "https://raw.githubusercontent.com/ThomasBy2025/musicfree/refs/heads/main/plugins/wy.js",
+    srcUrl: "https://www.ghproxy.cn/https://raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/plugins/wy.js",
     cacheControl: "no-store",
     hints: {
         importMusicSheet: [
