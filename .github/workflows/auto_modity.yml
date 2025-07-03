@@ -16,8 +16,9 @@ jobs:
       - name: Check upstream repository status
         id: check-update
         run: |
-          # 安装 jq 用于 JSON 解析
-          sudo apt-get install -y jq
+          # 安装依赖
+          sudo apt-get update
+          sudo apt-get install -y jq curl
           
           # 获取上游仓库最新 commit SHA
           UPSTREAM_SHA=$(curl -s "https://api.github.com/repos/ThomasBy2025/musicfree/commits/main" | jq -r .sha)
@@ -54,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget
+          sudo apt-get install -y wget jq
           
       - name: Download wy.js
         run: |
@@ -63,18 +64,38 @@ jobs:
           
           # 验证下载结果
           if [ ! -f wy.js ]; then
-            echo "::error::文件下载失败"
+            echo "::error::wy.js 文件下载失败"
             exit 1
           fi
           
           if [ ! -s wy.js ]; then
-            echo "::error::下载的文件为空"
+            echo "::error::下载的 wy.js 文件为空"
             exit 1
           fi
           
-          echo "文件下载成功，大小: $(wc -c <wy.js) 字节"
+          echo "wy.js 下载成功，大小: $(wc -c <wy.js) 字节"
 
-      - name: Load function codes from files
+      - name: Download function definitions
+        run: |
+          # 下载函数定义文件
+          wget -O getLyric.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getLyric.txt"
+          wget -O formatComment.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/formatComment.txt"
+          wget -O getMusicComments.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getMusicComments.txt"
+          
+          # 验证下载结果
+          for file in getLyric.txt formatComment.txt getMusicComments.txt; do
+            if [ ! -f "$file" ]; then
+              echo "::error::$file 下载失败"
+              exit 1
+            fi
+            if [ ! -s "$file" ]; then
+              echo "::error::$file 文件为空"
+              exit 1
+            fi
+            echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
+          done
+
+      - name: Load function codes
         run: |
           # 从文件加载函数代码
           getLyric_code=$(cat getLyric.txt)
@@ -101,6 +122,23 @@ jobs:
           echo "formatComment_code length: ${#formatComment_code}"
           echo "getMusicComments_code length: ${#getMusicComments_code}"
           
+          # 确保函数代码不为空
+          if [ -z "${{ env.getLyric_code }}" ]; then
+            echo "::error::getLyric_code 为空"
+            exit 1
+          fi
+          
+          if [ -z "${{ env.formatComment_code }}" ]; then
+            echo "::error::formatComment_code 为空"
+            exit 1
+          fi
+          
+          if [ -z "${{ env.getMusicComments_code }}" ]; then
+            echo "::error::getMusicComments_code 为空"
+            exit 1
+          fi
+          
+          # 使用 awk 替换函数
           awk -v getLyric="${{ env.getLyric_code }}" \
               -v formatComment="${{ env.formatComment_code }}" \
               -v getMusicComments="${{ env.getMusicComments_code }}" '
@@ -113,12 +151,20 @@ jobs:
               print
           }' wy.js > wy_modified.js
           
+          # 验证修改结果
+          if [ ! -s wy_modified.js ]; then
+            echo "::error::修改后的文件为空"
+            exit 1
+          fi
+          
           mv wy_modified.js wy.js
+          echo "函数替换完成，新文件大小: $(wc -c <wy.js) 字节"
 
       - name: Upload modified file
         run: |
           mkdir -p plugins
           mv wy.js plugins/
+          echo "文件已移动到 plugins/ 目录"
 
       - name: Commit changes
         run: |
