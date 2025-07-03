@@ -16,17 +16,20 @@ jobs:
       - name: Check upstream repository status
         id: check-update
         run: |
-          # 获取上游仓库最新commit SHA
+          # 安装 jq 用于 JSON 解析
+          sudo apt-get install -y jq
+          
+          # 获取上游仓库最新 commit SHA
           UPSTREAM_SHA=$(curl -s "https://api.github.com/repos/ThomasBy2025/musicfree/commits/main" | jq -r .sha)
           
-          # 获取上次记录的commit SHA
+          # 获取上次记录的 commit SHA
           if [ -f .last_commit ]; then
             LAST_SHA=$(cat .last_commit)
           else
             LAST_SHA=""
           fi
           
-          # 比较commit SHA
+          # 比较 commit SHA
           if [ "$UPSTREAM_SHA" != "$LAST_SHA" ]; then
             echo "has_update=true" >> $GITHUB_OUTPUT
             echo "New update detected in upstream repository"
@@ -35,7 +38,7 @@ jobs:
             echo "No updates in upstream repository"
           fi
           
-          # 保存当前SHA供下次比较
+          # 保存当前 SHA 供下次比较
           echo "$UPSTREAM_SHA" > .last_commit
 
   update-plugin:
@@ -47,13 +50,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install wget
-        run: | 
-        sudo apt-get install -y wget
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          
       - name: Download wy.js
         run: |
-          wget -o wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/main/plugins/wy.js"
+          # 使用 wget 下载文件
+          wget -O wy.js "https://ghproxy.cn/raw.githubusercontent.com/ThomasBy2025/musicfree/main/plugins/wy.js"
+          
+          # 验证下载结果
+          if [ ! -f wy.js ]; then
+            echo "::error::文件下载失败"
+            exit 1
+          fi
+          
+          if [ ! -s wy.js ]; then
+            echo "::error::下载的文件为空"
+            exit 1
+          fi
+          
+          echo "文件下载成功，大小: $(wc -c <wy.js) 字节"
 
       - name: Load function codes from files
         run: |
@@ -77,11 +96,17 @@ jobs:
 
       - name: Modify wy.js functions
         run: |
+          # 调试输出函数代码长度
+          echo "getLyric_code length: ${#getLyric_code}"
+          echo "formatComment_code length: ${#formatComment_code}"
+          echo "getMusicComments_code length: ${#getMusicComments_code}"
+          
           awk -v getLyric="${{ env.getLyric_code }}" \
               -v formatComment="${{ env.formatComment_code }}" \
               -v getMusicComments="${{ env.getMusicComments_code }}" '
           BEGIN { RS = "" }
           {
+              # 替换函数定义
               gsub(/async function getLyric\([^{]*{[^}]*}/, getLyric)
               gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
               gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
