@@ -78,9 +78,9 @@ jobs:
       - name: Download function definitions
         run: |
           # 下载函数定义文件
-          wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getLyric.txt"
-          wget -O formatComment.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/formatComment.txt"
-          wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getMusicComments.txt"
+          wget -O getLyric.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getLyric.txt"
+          wget -O formatComment.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/formatComment.txt"
+          wget -O getMusicComments.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getMusicComments.txt"
           
           # 验证下载结果
           for file in getLyric.txt formatComment.txt getMusicComments.txt; do
@@ -149,47 +149,4 @@ jobs:
               gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
               gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
               print
-          }' wy.js > wy_modified.js
-          
-          # 验证修改结果
-          if [ ! -s wy_modified.js ]; then
-            echo "::error::修改后的文件为空"
-            exit 1
-          fi
-          
-          mv wy_modified.js wy.js
-          echo "函数替换完成，新文件大小: $(wc -c <wy.js) 字节"
-
-      - name: Upload modified file
-        run: |
-          mkdir -p plugins
-          mv wy.js plugins/
-          echo "文件已移动到 plugins/ 目录"
-
-      - name: Commit changes
-        run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "GitHub Actions"
-          
-          # 添加修改的文件
-          git add plugins/wy.js
-          
-          # 仅在非手动运行且文件存在时添加 .last_commit
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -f .last_commit ]; then
-            git add .last_commit
-          fi
-          
-          # 检查是否有需要提交的更改
-          if git diff-index --quiet HEAD; then
-            echo "没有需要提交的更改"
-          else
-            # 根据触发方式设置不同的提交信息
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              COMMIT_MSG="chore: manual update wy.js plugin [skip ci]"
-            else
-              COMMIT_MSG="chore: auto update wy.js plugin from upstream [skip ci]"
-            fi
-            
-            git commit -m "$COMMIT_MSG"
-            git push
-          fi
+          }' wy.js > wy
