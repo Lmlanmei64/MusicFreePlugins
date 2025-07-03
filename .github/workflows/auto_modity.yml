@@ -78,9 +78,9 @@ jobs:
       - name: Download function definitions
         run: |
           # 下载函数定义文件
-          wget -O getLyric.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getLyric.txt"
-          wget -O formatComment.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/formatComment.txt"
-          wget -O getMusicComments.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getMusicComments.txt"
+          wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getLyric.txt"
+          wget -O formatComment.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/formatComment.txt"
+          wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getMusicComments.txt"
           
           # 验证下载结果
           for file in getLyric.txt formatComment.txt getMusicComments.txt; do
