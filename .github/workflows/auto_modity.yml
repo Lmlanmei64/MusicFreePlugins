@@ -47,9 +47,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-- name: Install wget
-  run: sudo apt-get install -y wget
+      - name: Install wget
+        run: | 
+        sudo apt-get install -y wget
 
       - name: Download wy.js
         run: |
