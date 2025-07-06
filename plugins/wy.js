@@ -23,11 +23,15 @@ const qualityMap = {
         "jymaster": "超清母带", // SVIP
     */
 };
+
+
+
 // 实现 eapi 请求
 function MD5(data) {
     return CryptoJs.MD5(data)
         .toString(CryptoJs.enc.Hex);
 }
+
 function AES(data) {
     let key = CryptoJs.enc.Utf8.parse("e82ckenh8dichen8");
     let text = CryptoJs.enc.Utf8.parse(data);
@@ -37,6 +41,7 @@ function AES(data) {
     }).ciphertext.toString(CryptoJs.enc.Hex);
 }
 async function EAPI(path, json = {}) {
+
     let params = [path, JSON.stringify(json)];
     params.push(MD5(
         "nobody" +
@@ -44,11 +49,13 @@ async function EAPI(path, json = {}) {
         "md5forencrypt"
     ));
     params = AES(params.join("-36cd479b6b5-"));
+
     let { // 获取用户数据
         music_u
     } = env && env.getUserVariables();
     let music_a = (music_u || "").match(/MUSIC_[UA]=([^;]+)/i)
     music_u = "os=pc; " + (music_a ? "appver=9.0.25; MUSIC_U=" + music_a[1] : "");
+
     return (await (0, axios_1.default)({
         url: path.replace("/", "https://interface.music.163.com/e"),
         method: "POST",
@@ -58,6 +65,9 @@ async function EAPI(path, json = {}) {
         },
     })).data;
 }
+
+
+
 // 格式化歌曲信息
 function formatMusicItem(_) {
     _ = _.baseInfo || _.song || _;
@@ -104,10 +114,12 @@ function formatMusicItem(_) {
         /* 其他信息 */
         albumId,
         content,
+
         /* 默认音源 */
         // url: `http://music.163.com/song/media/outer/url?id=${songId}.mp3`
         /* 音源 */
         // source?: Partial<Record<IQualityKey, IMediaSource>>
+
         rawLrc: _.lyrics,
     }
 }
@@ -120,6 +132,9 @@ async function getMusicInfo(musicItem) {
     a.privilege = _.privileges[0];
     return formatMusicItem(a);
 }
+
+
+
 // 格式化专辑信息
 function formatAlbumItem(_) {
     return {
@@ -150,6 +165,9 @@ async function getAlbumInfo(albumItem) {
         musicList: (res.songs || []).map(formatMusicItem),
     };
 }
+
+
+
 // 格式化作者信息
 function formatArtistItem(_) {
     return {
@@ -192,6 +210,9 @@ async function getArtistWorks(artistItem, page, type) {
         data: res[T.path2].map(T.mapJs),
     };
 }
+
+
+
 // 格式化歌单信息
 function formatSheetItem(_) {
     _ = _.baseInfo || _;
@@ -230,6 +251,9 @@ async function getMusicSheetInfo(sheet, page = 1) {
         musicList: list.map(formatMusicItem)
     };
 }
+
+
+
 // 获取排行榜分类
 async function getTopLists() {
     let group1 = [];
@@ -263,6 +287,9 @@ async function getTopListDetail(topListItem) {
     res.topListItem.content = 3;
     return res;
 }
+
+
+
 // 获取歌单分类
 async function getRecommendSheetTags() {
     let group1 = [{
@@ -365,6 +392,9 @@ async function getRecommendSheetsByTag(tag, page) {
         data: list.map(formatSheetItem)
     };
 }
+
+
+
 // 匹配歌单链接，跳转到歌单详情函数
 // 需要返回列表，获取musicList
 async function importMusicSheet(urlLike) {
@@ -382,6 +412,9 @@ async function importMusicSheet(urlLike) {
         id
     })).musicList;
 }
+
+
+
 // 匹配单曲链接，跳转到单曲详情函数
 async function importMusicItem(urlLike) {
     let id = (urlLike.match(/^(\d+)$/) || [])[1];
@@ -398,17 +431,20 @@ async function importMusicItem(urlLike) {
         id
     });
 }
+
+
+
 // 获取在线歌词
 async function getLyric(musicItem) {
     try {
-        const response = await axios.get(https://music.163.com/api/song/lyric, {
+        const response = await axios.get("https://music.163.com/api/song/lyric", {
             params: {
                 id: musicItem.id,
                 lv: -1,
                 tv: -1
             },
             headers: {
-                os: pc
+                os: "pc"
             }
         });
 
@@ -417,7 +453,7 @@ async function getLyric(musicItem) {
             translation: response.data.tlyric?.lyric || ''
         };
     } catch (error) {
-        console.error(获取歌词时出错:, error.message);
+        console.error("获取歌词时出错:", error.message);
         return {
             rawLrc: '',
             translation: ''
@@ -439,6 +475,9 @@ async function getLyric(musicItem) {
         // index: 0,
     };
 }
+
+
+
 // 获取播放链接
 async function getMediaSource(musicItem, quality) {
     if (!musicItem.qualities[quality]) {
@@ -465,6 +504,9 @@ async function getMediaSource(musicItem, quality) {
     }
     return false;
 }
+
+
+
 // 获取灰色歌曲
 async function KUWO(musicItem, quality) {
     let {
@@ -478,12 +520,14 @@ async function KUWO(musicItem, quality) {
         rn: 30, // 获取30个
         pn: 0, // 当前页数
         all: musicItem.title, // 搜索的关键词
+
         itemset: "web_2013",
         client: "kt",
         pcjson: 1
     };
     // 此参数存在时会返回vip歌曲
     if (source) params.vipver = "MUSIC_8.0.3.0_BCS75"
+
     // 搜索
     var songId;
     let sou = (await (0, axios_1.default)({
@@ -498,6 +542,7 @@ async function KUWO(musicItem, quality) {
         };
     }
     // console.log(songId);
+
     // 获取
     let res = (await axios_1.default.get("http://nmobi.kuwo.cn/mobi.s", {
         params: {
@@ -522,6 +567,11 @@ async function KUWO(musicItem, quality) {
         quality
     }
 }
+
+
+
+
+
 // 格式化歌曲评论
 function formatComment(item) {
     return {
@@ -537,7 +587,7 @@ function formatComment(item) {
 }
 // 获取歌曲评论
 async function getMusicComments(musicItem, limit = 20) {
-    const url = https://zm.armoe.cn/comment/music;
+    const url = "https://zm.armoe.cn/comment/music";
     let allComments = [];
     let offset = 0;
     let before = null;
@@ -556,7 +606,7 @@ async function getMusicComments(musicItem, limit = 20) {
             const result = response.data;
 
             if (!result || !result.comments) {
-                throw new Error(评论数据为空或获取失败);
+                throw new Error("评论数据为空或获取失败");
             }
 
             const comments = result.comments.map(formatComment);
@@ -568,7 +618,7 @@ async function getMusicComments(musicItem, limit = 20) {
                 offset += limit;
             }
         } catch (error) {
-            console.error(获取评论时出错:, error.message);
+            console.error("获取评论时出错:", error.message);
             break;
         }
     }
@@ -584,6 +634,9 @@ async function getMusicComments(musicItem, limit = 20) {
         data: res.comments.map(formatComment)
     }
 }
+
+
+
 // 搜索函数
 async function searchBase(query, page, type, v1 = "") {
     let path = "/api" + v1 + "/search/" + (/\//.test(type) ? type : (type + "/get"));
@@ -604,7 +657,7 @@ module.exports = {
     author: '反馈Q群@365976134',
     version: "2025.01.22",
     appVersion: ">0.4.0-alpha.0",
-    srcUrl: "https://www.ghproxy.cn/https://raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/plugins/wy.js",
+    srcUrl: "https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js",
     cacheControl: "no-store",
     hints: {
         importMusicSheet: [
