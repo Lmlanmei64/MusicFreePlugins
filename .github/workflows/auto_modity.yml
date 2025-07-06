@@ -161,7 +161,7 @@ jobs:
           mv wy_modified.js wy.js
           echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
 
-            - name: Replace srcUrl
+          - name: Replace srcUrl
               run: |
           # 替换 srcUrl 为新地址
           new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
