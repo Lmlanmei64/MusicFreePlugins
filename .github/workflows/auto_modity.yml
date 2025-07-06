@@ -98,7 +98,7 @@ jobs:
       - name: Create Node.js replacement script
         run: |
           # 创建安全的 Node.js 替换脚本
-          cat > replace-functions.js << 'EOL'
+          cat > replace-functions.js << 'EOF'
           const fs = require('fs');
           const path = require('path');
           
@@ -138,7 +138,7 @@ jobs:
           // 写入修改后的文件
           fs.writeFileSync('wy_modified.js', modifiedContent);
           console.log('函数替换完成');
-          EOL
+          EOF
           
           echo "Node.js 替换脚本已创建"
 
@@ -161,23 +161,27 @@ jobs:
           mv wy_modified.js wy.js
           echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
 
-          - name: Replace srcUrl
-              run: |
-          # 替换 srcUrl 为新地址
+      - name: Replace srcUrl
+        run: |
+          # 设置新的 srcUrl
           new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
           
           # 使用 Node.js 安全替换 srcUrl
-          node -e "
-            const fs = require('fs');
-            const content = fs.readFileSync('wy.js', 'utf-8');
-            const newContent = content.replace(
-              /(srcUrl:\\s*['\"])([^'\"]+)(['\"])/,
-              `$1${'$new_srcUrl'}$3`
-            );
-            fs.writeFileSync('wy.js', newContent);
-            console.log('srcUrl 替换完成');
-          "
+          node -e "const fs = require('fs'); 
+                   const content = fs.readFileSync('wy.js', 'utf-8'); 
+                   const newContent = content.replace(/(srcUrl:\\s*['\"])([^'\"]+)(['\"])/, 
+                   `srcUrl: '${'$new_srcUrl'}'`); 
+                   fs.writeFileSync('wy.js', newContent); 
+                   console.log('srcUrl 替换完成');"
           
+          # 验证替换结果
+          if grep -q "$new_srcUrl" wy.js; then
+            echo "srcUrl 替换成功"
+          else
+            echo "::error::srcUrl 替换失败"
+            exit 1
+          fi
+
       - name: Upload modified file
         run: |
           mkdir -p plugins
