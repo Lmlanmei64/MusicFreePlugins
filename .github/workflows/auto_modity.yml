@@ -163,7 +163,7 @@ jobs:
       - name: Replace srcUrl
         run: |
           # 替换 srcUrl 为新地址
-          new_srcUrl="https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/plugins/wy.js"
+          new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
           
           # 使用 sed 替换 srcUrl
           sed -i "s|srcUrl: ['\"][^'\"]*['\"]|srcUrl: '$new_srcUrl'|" wy.js
