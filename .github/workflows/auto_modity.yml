@@ -78,9 +78,9 @@ jobs:
       - name: Download function definitions
         run: |
           # 下载函数定义文件
-          wget -O getLyric.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getLyric.txt"
-          wget -O formatComment.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/formatComment.txt"
-          wget -O getMusicComments.txt "https://jgithub.xyz/Lmlanmei64/MusicFreePlugins/raw/master/getMusicComments.txt"
+          wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getLyric.txt"
+          wget -O formatComment.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/formatComment.txt"
+          wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getMusicComments.txt"
           
           # 验证下载结果
           for file in getLyric.txt formatComment.txt getMusicComments.txt; do
@@ -95,78 +95,88 @@ jobs:
             echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
           done
 
-      - name: Load function codes
+      - name: Create Node.js replacement script
         run: |
-          # 从文件加载函数代码
-          getLyric_code=$(cat getLyric.txt)
-          formatComment_code=$(cat formatComment.txt)
-          getMusicComments_code=$(cat getMusicComments.txt)
+          # 创建安全的 Node.js 替换脚本
+          cat > replace-functions.js << 'EOL'
+          const fs = require('fs');
+          const path = require('path');
           
-          # 安全地设置多行环境变量
-          echo "getLyric_code<<EOF" >> $GITHUB_ENV
-          echo "$getLyric_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          // 读取源文件和函数定义
+          const sourceFile = fs.readFileSync('wy.js', 'utf-8');
+          const functions = {
+            getLyric: fs.readFileSync('getLyric.txt', 'utf-8'),
+            formatComment: fs.readFileSync('formatComment.txt', 'utf-8'),
+            getMusicComments: fs.readFileSync('getMusicComments.txt', 'utf-8')
+          };
           
-          echo "formatComment_code<<EOF" >> $GITHUB_ENV
-          echo "$formatComment_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          // 定义替换函数
+          function replaceFunction(source, funcName, newCode) {
+            // 构建匹配函数签名的正则表达式
+            const signaturePattern = new RegExp(
+              `(async\\s+)?function\\s+${funcName}\\s*\\([^)]*\\)\\s*{[^}]*}`,
+              'g'
+            );
+            
+            // 尝试匹配原始函数
+            const matches = source.match(signaturePattern);
+            if (!matches || matches.length === 0) {
+              console.error(`未找到函数: ${funcName}`);
+              return source;
+            }
+            
+            // 替换所有匹配项
+            return source.replace(signaturePattern, newCode);
+          }
           
-          echo "getMusicComments_code<<EOF" >> $GITHUB_ENV
-          echo "$getMusicComments_code" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          // 执行所有替换
+          let modifiedContent = sourceFile;
+          for (const [funcName, funcCode] of Object.entries(functions)) {
+            modifiedContent = replaceFunction(modifiedContent, funcName, funcCode);
+          }
+          
+          // 写入修改后的文件
+          fs.writeFileSync('wy_modified.js', modifiedContent);
+          console.log('函数替换完成');
+          EOL
+          
+          echo "Node.js 替换脚本已创建"
 
-      - name: Modify wy.js functions
+      - name: Run Node.js replacement
         run: |
-          # 调试输出函数代码长度
-          echo "getLyric_code length: ${#getLyric_code}"
-          echo "formatComment_code length: ${#formatComment_code}"
-          echo "getMusicComments_code length: ${#getMusicComments_code}"
+          # 运行 Node.js 替换脚本
+          node replace-functions.js
           
-          # 确保函数代码不为空
-          if [ -z "${{ env.getLyric_code }}" ]; then
-            echo "::error::getLyric_code 为空"
+          # 验证替换结果
+          if [ ! -f wy_modified.js ]; then
+            echo "::error::修改后的文件未生成"
             exit 1
           fi
           
-          if [ -z "${{ env.formatComment_code }}" ]; then
-            echo "::error::formatComment_code 为空"
-            exit 1
-          fi
-          
-          if [ -z "${{ env.getMusicComments_code }}" ]; then
-            echo "::error::getMusicComments_code 为空"
-            exit 1
-          fi
-          
-          # 使用 awk 替换函数
-          awk -v getLyric="${{ env.getLyric_code }}" \
-              -v formatComment="${{ env.formatComment_code }}" \
-              -v getMusicComments="${{ env.getMusicComments_code }}" '
-          BEGIN { RS = "" }
-          {
-              # 替换函数定义
-              gsub(/async function getLyric\([^{]*{[^}]*}/, getLyric)
-              gsub(/function formatComment\([^{]*{[^}]*}/, formatComment)
-              gsub(/async function getMusicComments\([^{]*{[^}]*}/, getMusicComments)
-              print
-          }' wy.js > wy_modified.js
-          
-          # 验证修改结果
           if [ ! -s wy_modified.js ]; then
             echo "::error::修改后的文件为空"
             exit 1
           fi
           
           mv wy_modified.js wy.js
-          echo "函数替换完成，新文件大小: $(wc -c <wy.js) 字节"
-          
+          echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
+
       - name: Replace srcUrl
         run: |
           # 替换 srcUrl 为新地址
           new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
           
-          # 使用 sed 替换 srcUrl
-          sed -i "s|srcUrl: ['\"][^'\"]*['\"]|srcUrl: '$new_srcUrl'|" wy.js
+          # 使用 Node.js 安全替换 srcUrl
+          node -e "
+            const fs = require('fs');
+            const content = fs.readFileSync('wy.js', 'utf-8');
+            const newContent = content.replace(
+              /(srcUrl:\\s*['\"])([^'\"]+)(['\"])/,
+              `$1${'$new_srcUrl'}$3`
+            );
+            fs.writeFileSync('wy.js', newContent);
+            console.log('srcUrl 替换完成');
+          "
           
           # 验证替换结果
           if grep -q "$new_srcUrl" wy.js; then
@@ -175,8 +185,6 @@ jobs:
             echo "::error::srcUrl 替换失败"
             exit 1
           fi
-          
-          echo "srcUrl 更新为: $new_srcUrl"
 
       - name: Upload modified file
         run: |
