@@ -161,31 +161,36 @@ jobs:
           mv wy_modified.js wy.js
           echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
 
-      - name: Replace srcUrl
-        run: |
-          # 替换 srcUrl 为新地址
-          new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
-          
-          # 使用 Node.js 安全替换 srcUrl
-          node -e "
-            const fs = require('fs');
-            const content = fs.readFileSync('wy.js', 'utf-8');
-            const newContent = content.replace(
-              /(srcUrl:\\s*['\"])([^'\"]+)(['\"])/,
-              `$1${'$new_srcUrl'}$3`
-            );
-            fs.writeFileSync('wy.js', newContent);
-            console.log('srcUrl 替换完成');
-          "
-          
-          # 验证替换结果
-          if grep -q "$new_srcUrl" wy.js; then
-            echo "srcUrl 替换成功"
-          else
-            echo "::error::srcUrl 替换失败"
-            exit 1
-          fi
-
+- name: Replace srcUrl
+  run: |
+    # 设置新的srcUrl
+    new_srcUrl="https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/plugins/wy.js"
+    
+    # 使用Node.js安全替换srcUrl，通过环境变量传递new_srcUrl
+    export new_srcUrl="$new_srcUrl"
+    node -e "
+      const fs = require('fs');
+      const newSrcUrl = process.env.new_srcUrl;
+      let content = fs.readFileSync('wy.js', 'utf-8');
+      // 使用正则表达式匹配srcUrl: 后面跟着引号字符串
+      const regex = /(srcUrl:\s*['\"])([^'\"]*)(['\"])/;
+      if (regex.test(content)) {
+        content = content.replace(regex, `$1${newSrcUrl}$3`);
+        fs.writeFileSync('wy.js', content);
+        console.log('srcUrl替换成功');
+      } else {
+        console.error('未找到srcUrl');
+        process.exit(1);
+      }
+    "
+    
+    # 验证替换结果
+    if grep -q "$new_srcUrl" wy.js; then
+      echo "srcUrl 替换成功"
+    else
+      echo "::error::srcUrl 替换失败"
+      exit 1
+    fi
       - name: Upload modified file
         run: |
           mkdir -p plugins
