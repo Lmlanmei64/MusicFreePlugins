@@ -5,7 +5,7 @@ on:
     types: [check_for_updates]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 *1/3 * *'
+    - cron: '0 0 */3 * *'
 
 jobs:
   check-upstream:
