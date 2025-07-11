@@ -5,7 +5,7 @@ on:
     types: [check_for_updates]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */3 * *'
+    - cron: '0 0 */3 * *'  # 每3天运行一次
 
 jobs:
   check-upstream:
@@ -79,11 +79,10 @@ jobs:
         run: |
           # 使用新的 URL 下载函数定义文件
           wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getLyric.txt"
-          wget -O formatComment.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/formatComment.txt"
           wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getMusicComments.txt"
           
           # 验证下载结果
-          for file in getLyric.txt formatComment.txt getMusicComments.txt; do
+          for file in getLyric.txt getMusicComments.txt; do
             if [ ! -f "$file" ]; then
               echo "::error::$file 下载失败"
               exit 1
@@ -95,57 +94,130 @@ jobs:
             echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
           done
 
-      - name: Create Node.js replacement script
+      - name: Create advanced replacement script
         run: |
-          # 创建安全的 Node.js 替换脚本
-          cat > replace-functions.js << 'EOF'
+          # 创建高级替换脚本
+          cat > advanced-replace.js << 'EOF'
           const fs = require('fs');
           const path = require('path');
           
           // 读取源文件和函数定义
-          const sourceFile = fs.readFileSync('wy.js', 'utf-8');
-          const functions = {
+          const sourceContent = fs.readFileSync('wy.js', 'utf-8');
+          const newFunctions = {
             getLyric: fs.readFileSync('getLyric.txt', 'utf-8'),
-            formatComment: fs.readFileSync('formatComment.txt', 'utf-8'),
             getMusicComments: fs.readFileSync('getMusicComments.txt', 'utf-8')
           };
           
-          // 定义替换函数
+          // 1. 提取 axios 变量名
+          const axiosVarMatch = sourceContent.match(/const\s+(\w+)\s*=\s*require\("axios"\)/);
+          const axiosVarName = axiosVarMatch ? axiosVarMatch[1] : 'axios';
+          console.log(`检测到 axios 变量名: ${axiosVarName}`);
+          
+          // 2. 替换函数中的 axios 引用
+          for (const [funcName, funcCode] of Object.entries(newFunctions)) {
+            newFunctions[funcName] = funcCode.replace(/axios/g, axiosVarName);
+          }
+          
+          // 3. 精确函数替换（支持嵌套大括号）
+          let modifiedContent = sourceContent;
+          
           function replaceFunction(source, funcName, newCode) {
             // 构建匹配函数签名的正则表达式
             const signaturePattern = new RegExp(
-              `(async\\s+)?function\\s+${funcName}\\s*\\([^)]*\\)\\s*{[^}]*}`,
-              'g'
+              `(async\\s+)?function\\s+${funcName}\\s*\\([^)]*\\)\\s*\\{`
             );
             
-            // 尝试匹配原始函数
-            const matches = source.match(signaturePattern);
-            if (!matches || matches.length === 0) {
+            const match = source.match(signaturePattern);
+            if (!match) {
               console.error(`未找到函数: ${funcName}`);
               return source;
             }
             
-            // 替换所有匹配项
-            return source.replace(signaturePattern, newCode);
+            const startIndex = match.index;
+            let braceCount = 0;
+            let currentIndex = startIndex;
+            let inString = false;
+            let stringChar = null;
+            
+            // 查找函数结束位置（匹配大括号）
+            for (; currentIndex < source.length; currentIndex++) {
+              const char = source[currentIndex];
+              
+              // 处理字符串字面量
+              if (!inString && (char === '"' || char === "'" || char === '`')) {
+                inString = true;
+                stringChar = char;
+              } else if (inString && char === stringChar) {
+                inString = false;
+                stringChar = null;
+              }
+              
+              // 如果不在字符串中，统计大括号
+              if (!inString) {
+                if (char === '{') braceCount++;
+                if (char === '}') braceCount--;
+                
+                // 当大括号计数归零时，找到函数结束位置
+                if (braceCount === 0) {
+                  break;
+                }
+              }
+            }
+            
+            if (braceCount !== 0) {
+              console.error(`函数 ${funcName} 未正确结束`);
+              return source;
+            }
+            
+            // 替换函数体（包含函数签名和整个函数体）
+            const endIndex = currentIndex + 1; // 包含结束大括号
+            const before = source.substring(0, startIndex);
+            const after = source.substring(endIndex);
+            
+            return before + newCode + after;
           }
           
-          // 执行所有替换
-          let modifiedContent = sourceFile;
-          for (const [funcName, funcCode] of Object.entries(functions)) {
-            modifiedContent = replaceFunction(modifiedContent, funcName, funcCode);
+          // 执行函数替换
+          modifiedContent = replaceFunction(modifiedContent, 'getLyric', newFunctions.getLyric);
+          modifiedContent = replaceFunction(modifiedContent, 'getMusicComments', newFunctions.getMusicComments);
+          
+          // 4. 替换 srcUrl
+          const newSrcUrl = "https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js";
+          modifiedContent = modifiedContent.replace(
+            /(srcUrl:\s*['"])([^'"]+)(['"])/,
+            `$1${newSrcUrl}$3`
+          );
+          
+          // 5. 检查是否需要更新
+          const currentPluginPath = 'plugins/wy.js';
+          let needsUpdate = true;
+          
+          if (fs.existsSync(currentPluginPath)) {
+            const currentContent = fs.readFileSync(currentPluginPath, 'utf-8');
+            if (currentContent === modifiedContent) {
+              console.log('内容未更改，跳过更新');
+              needsUpdate = false;
+            }
           }
           
           // 写入修改后的文件
           fs.writeFileSync('wy_modified.js', modifiedContent);
-          console.log('函数替换完成');
+          
+          // 设置环境变量指示是否需要更新
+          if (needsUpdate) {
+            fs.writeFileSync('needs_update', 'true');
+            console.log('内容已更改，需要更新');
+          } else {
+            fs.writeFileSync('needs_update', 'false');
+          }
           EOF
           
-          echo "Node.js 替换脚本已创建"
+          echo "高级替换脚本已创建"
 
-      - name: Run Node.js replacement
+      - name: Run advanced replacement
         run: |
-          # 运行 Node.js 替换脚本
-          node replace-functions.js
+          # 运行高级替换脚本
+          node advanced-replace.js
           
           # 验证替换结果
           if [ ! -f wy_modified.js ]; then
@@ -158,38 +230,32 @@ jobs:
             exit 1
           fi
           
-          mv wy_modified.js wy.js
-          echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
-
-      - name: Replace srcUrl
-        run: |
-          # 设置新的 srcUrl
-          new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
-          
-          # 使用 Node.js 安全替换 srcUrl
-          node -e "const fs = require('fs'); 
-                   const content = fs.readFileSync('wy.js', 'utf-8'); 
-                   const newContent = content.replace(/(srcUrl:\\s*['\"])([^'\"]+)(['\"])/, 
-                   'srcUrl: \"$new_srcUrl\"'); 
-                   fs.writeFileSync('wy.js', newContent); 
-                   console.log('srcUrl 替换完成');"
-          
-          # 验证替换结果
-          if grep -q "$new_srcUrl" wy.js; then
-            echo "srcUrl 替换成功"
+          # 检查是否需要更新
+          if [ "$(cat needs_update)" = "true" ]; then
+            mv wy_modified.js wy.js
+            echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
           else
-            echo "::error::srcUrl 替换失败"
-            exit 1
+            echo "内容未更改，跳过文件替换"
+            rm wy_modified.js
           fi
 
-      - name: Upload modified file
+      - name: Upload modified file (if changed)
+        if: ${{ success() && github.event_name != 'workflow_dispatch' && env.NEEDS_UPDATE == 'true' }}
         run: |
-          mkdir -p plugins
-          mv wy.js plugins/
-          echo "文件已移动到 plugins/ 目录"
+          if [ -f wy.js ]; then
+            mkdir -p plugins
+            mv wy.js plugins/
+            echo "文件已移动到 plugins/ 目录"
+          else
+            echo "没有需要更新的文件"
+          fi
 
-      - name: Commit changes
+      - name: Commit changes (if needed)
+        if: ${{ success() && env.NEEDS_UPDATE == 'true' }}
         run: |
+          # 设置环境变量
+          echo "NEEDS_UPDATE=true" >> $GITHUB_ENV
+          
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "GitHub Actions"
           
@@ -215,3 +281,10 @@ jobs:
             git commit -m "$COMMIT_MSG"
             git push
           fi
+
+      - name: Skip commit if no changes
+        if: ${{ success() && env.NEEDS_UPDATE != 'true' }}
+        run: |
+          echo "内容未更改，跳过提交"
+          # 设置环境变量指示无需更新
+          echo "NEEDS_UPDATE=false" >> $GITHUB_ENV
