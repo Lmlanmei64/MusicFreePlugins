@@ -459,21 +459,6 @@ async function getLyric(musicItem) {
             translation: ''
         };
     }
-});
-    return {
-        /* 歌词URL */
-        // lrc: "",
-        /* 纯文本歌词 */
-        rawLrc: res.lrc.lyric,
-        /* 没有时间戳的 纯文本歌词 */
-        // rawLrcTxt: "",
-        /* 纯文本格式的翻译 */
-        // translation: "",
-        /* 时间 s */
-        // time: 0,
-        /* 下标 */
-        // index: 0,
-    };
 }
 
 
@@ -637,11 +622,6 @@ async function getMusicComments(musicItem, limit = 20) {
         total: allComments.length,
         data: allComments
     };
-})).data;
-    return {
-        isEnd: res.hasMore != true,
-        data: res.comments.map(formatComment)
-    }
 }
 
 
