@@ -95,24 +95,23 @@ jobs:
             echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
           done
 
-      - name: Create Node.js replacement script
+      - name: Create and run Node.js replacement script
         run: |
-          # 创建安全的 Node.js 替换脚本
-          cat > replace-functions.js << 'EOF'
+          # 创建并直接运行 Node.js 替换脚本
+          node << 'EOF'
           const fs = require('fs');
           const path = require('path');
           
           // 读取源文件和函数定义
           const sourceFile = fs.readFileSync('wy.js', 'utf-8');
-          const functions = {
-            getLyric: fs.readFileSync('getLyric.txt', 'utf-8'),
-            getMusicComments: fs.readFileSync('getMusicComments.txt', 'utf-8')
-          };
+          const getLyricCode = fs.readFileSync('getLyric.txt', 'utf-8');
+          const getMusicCommentsCode = fs.readFileSync('getMusicComments.txt', 'utf-8');
           
           // 查找 axios 变量名
           const axiosRegex = /const\s+(\w+)\s*=\s*require\s*\(\s*['"]axios['"]\s*\)/;
           const axiosMatch = sourceFile.match(axiosRegex);
           const axiosVar = axiosMatch ? axiosMatch[1] : 'axios';
+          console.log(`检测到axios变量名: ${axiosVar}`);
           
           // 定义替换函数
           function replaceFunction(source, funcName, newCode) {
@@ -138,18 +137,79 @@ jobs:
           
           // 执行所有替换
           let modifiedContent = sourceFile;
-          for (const [funcName, funcCode] of Object.entries(functions)) {
-            modifiedContent = replaceFunction(modifiedContent, funcName, funcCode);
-          }
+          modifiedContent = replaceFunction(modifiedContent, 'getLyric', getLyricCode);
+          modifiedContent = replaceFunction(modifiedContent, 'getMusicComments', getMusicCommentsCode);
           
           // 写入修改后的文件
           fs.writeFileSync('wy_modified.js', modifiedContent);
-          console.log(`函数替换完成，使用的axios变量名: ${axiosVar}`);
+          console.log('函数替换完成');
           EOF
           
-          echo "Node.js 替换脚本已创建"
+          # 验证替换结果
+          if [ ! -f wy_modified.js ]; then
+            echo "::error::修改后的文件未生成"
+            exit 1
+          fi
+          
+          if [ ! -s wy_modified.js ]; then
+            echo "::error::修改后的文件为空"
+            exit 1
+          fi
+          
+          # 检查替换后的函数是否正确
+          if ! grep -q "async function getLyric(musicItem) {" wy_modified.js; then
+            echo "::error::getLyric函数替换失败"
+            exit 1
+          fi
+          
+          mv wy_modified.js wy.js
+          echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
 
-      - name: Run Node.js replacement
+      - name: Replace srcUrl
         run: |
-          # 运行 Node.js 替换脚本
-          node replace-function
+          # 设置新的 srcUrl
+          new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
+          
+          # 使用 Node.js 安全替换 srcUrl
+          node -e "const fs = require('fs'); 
+                   const content = fs.readFileSync('wy.js', 'utf-8'); 
+                   const newContent = content.replace(/(srcUrl:\\s*['\"])([^'\"]+)(['\"])/, 
+                   'srcUrl: \"$new_srcUrl\"'); 
+                   fs.writeFileSync('wy.js', newContent); 
+                   console.log('srcUrl 替换完成');"
+          
+          # 验证替换结果
+          if grep -q "$new_srcUrl" wy.js; then
+            echo "srcUrl 替换成功"
+          else
+            echo "::error::srcUrl 替换失败"
+            exit 1
+          fi
+
+      - name: Upload modified file
+        run: |
+          mkdir -p plugins
+          mv wy.js plugins/
+          echo "文件已移动到 plugins/ 目录"
+
+      - name: Force commit changes
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+          
+          # 强制添加文件
+          git add -f plugins/wy.js
+          
+          # 添加 .last_commit 文件（如果存在）
+          if [ -f .last_commit ]; then
+            git add .last_commit
+          fi
+          
+          # 强制提交，无论是否有更改
+          COMMIT_MSG="chore: auto update wy.js plugin"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            COMMIT_MSG="chore: manual update wy.js plugin"
+          fi
+          
+          git commit --allow-empty -m "$COMMIT_MSG [skip ci]"
+          git push
