@@ -1,0 +1,101 @@
+async function getLyric(musicItem) {
+    try {
+        const response = await axios.get("https://music.163.com/api/song/lyric", {
+            params: {
+                id: musicItem.id,
+                lv: -1,
+                tv: -1
+            },
+            headers: {
+                os: "pc"
+            }
+        });
+
+        let rawLrc = response.data.lrc?.lyric || '';
+        let translation = response.data.tlyric?.lyric || '';
+
+        // 解析歌词的函数
+        function parseLyric(lrc) {
+            const lines = lrc.split('\n');
+            const result = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const match = line.match(/^\[(\d{2}:\d{2}\.\d{3})\](.*)$/);
+                if (match) {
+                    result.push({
+                        time: match[1],
+                        text: match[2].trim()
+                    });
+                }
+            }
+            return result;
+        }
+
+        // 解析原始歌词和翻译歌词
+        const rawLines = parseLyric(rawLrc);
+        const transLines = parseLyric(translation);
+
+        // 收集所有时间点并排序
+        const timeSet = new Set();
+        rawLines.forEach(function(line) {
+            timeSet.add(line.time);
+        });
+        transLines.forEach(function(line) {
+            timeSet.add(line.time);
+        });
+        const sortedTimes = Array.from(timeSet).sort();
+
+        // 构建对齐后的歌词行数组
+        const alignedRawLines = [];
+        const alignedTransLines = [];
+        
+        sortedTimes.forEach(function(time) {
+            const rawTexts = rawLines.filter(function(l) {
+                return l.time === time;
+            }).map(function(l) {
+                return l.text;
+            });
+            
+            const transTexts = transLines.filter(function(l) {
+                return l.time === time;
+            }).map(function(l) {
+                return l.text;
+            });
+            
+            const maxLines = Math.max(rawTexts.length, transTexts.length);
+            
+            for (let i = 0; i < maxLines; i++) {
+                // 确保每个时间点都有对应的行
+                alignedRawLines.push({
+                    time: time,
+                    text: rawTexts[i] || ''
+                });
+                
+                alignedTransLines.push({
+                    time: time,
+                    text: transTexts[i] || ''
+                });
+            }
+        });
+
+        // 将歌词对象转换回字符串格式
+        function lyricToString(lyricArray) {
+            return lyricArray.map(function(line) {
+                return `[${line.time}]${line.text}`;
+            }).join('\n');
+        }
+
+        return {
+            rawLrc: lyricToString(alignedRawLines),
+            translation: lyricToString(alignedTransLines)
+        };
+    } catch (error) {
+        console.error("获取歌词时出错:", error.message);
+        return {
+            rawLrc: '',
+            translation: ''
+        };
+    }
+}
