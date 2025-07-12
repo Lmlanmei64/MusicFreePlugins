@@ -140,6 +140,15 @@ jobs:
           modifiedContent = replaceFunction(modifiedContent, 'getLyric', getLyricCode);
           modifiedContent = replaceFunction(modifiedContent, 'getMusicComments', getMusicCommentsCode);
           
+          // 替换 appVersion
+          const appVersionRegex = /(appVersion\s*:\s*)(['"][^'"]*['"])/;
+          if (appVersionRegex.test(modifiedContent)) {
+            modifiedContent = modifiedContent.replace(appVersionRegex, '$1"<0.4.0-alpha"');
+            console.log('appVersion 替换成功');
+          } else {
+            console.warn('未找到 appVersion，已跳过替换');
+          }
+          
           // 写入修改后的文件
           fs.writeFileSync('wy_modified.js', modifiedContent);
           console.log('函数替换完成');
@@ -160,6 +169,11 @@ jobs:
           if ! grep -q "async function getLyric(musicItem) {" wy_modified.js; then
             echo "::error::getLyric函数替换失败"
             exit 1
+          fi
+          
+          # 检查 appVersion 是否替换成功
+          if ! grep -q 'appVersion: "<0.4.0-alpha"' wy_modified.js; then
+            echo "::warning::appVersion 替换失败或未找到"
           fi
           
           mv wy_modified.js wy.js
