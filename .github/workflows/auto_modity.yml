@@ -96,7 +96,7 @@ jobs:
           done
 
       - name: Create and run Node.js replacement script
-  run: |
+        run: |
     # 创建并直接运行 Node.js 替换脚本
     node << 'EOF'
     const fs = require('fs');
