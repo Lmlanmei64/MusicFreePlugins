@@ -149,21 +149,34 @@ jobs:
             console.warn('未找到 appVersion，已跳过替换');
           }
           
-          // 添加/更新 description
-          const descText = "本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的“元力WY”插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件“音源重定向”为“元力WY”）";
-          const descRegex = /(description\s*:\s*)(['"][^'"]*['"])/;
+          // 添加/更新 description，确保在 module.exports 对象中
+          const descText = "本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的\"元力WY\"插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件\"音源重定向\"为\"元力WY\"）";
           
-          if (descRegex.test(modifiedContent)) {
-            // 替换现有 description
-            modifiedContent = modifiedContent.replace(descRegex, `$1'${descText}'`);
-            console.log('description 替换成功');
+          // 在 module.exports 对象中添加 description 字段
+          if (modifiedContent.includes("module.exports")) {
+            // 在 module.exports 对象中查找合适的位置添加 description
+            // 确保添加在 srcUrl 之后，并且后面有逗号
+            const descRegex = /(srcUrl\s*:\s*['"][^'"]*['"][\s,]*)/;
+            
+            if (descRegex.test(modifiedContent)) {
+              // 在 srcUrl 后面添加 description
+              modifiedContent = modifiedContent.replace(
+                descRegex,
+                `$1\n  description: '${descText}',`
+              );
+              console.log('description 已添加到 srcUrl 后面');
+            } else {
+              // 如果找不到 srcUrl，则添加到 module.exports 对象中
+              modifiedContent = modifiedContent.replace(
+                /(module\.exports\s*=\s*\{)([\s\S]*?)(\n\})/,
+                `$1$2,\n  description: '${descText}', $3`
+              );
+              console.log('description 添加到 module.exports 对象中');
+            }
           } else {
-            // 添加新的 description
-            modifiedContent = modifiedContent.replace(
-              /(module\.exports\s*=\s*\{)([\s\S]*?)(\n\})/,
-              `$1$2,\n  description: '${descText}'$3`
-            );
-            console.log('description 添加成功');
+            // 如果找不到 module.exports，在文件末尾添加
+            modifiedContent += `\nmodule.exports = { description: '${descText}' };\n`;
+            console.log('description 添加到文件末尾');
           }
           
           // 写入修改后的文件
@@ -194,8 +207,15 @@ jobs:
           fi
           
           # 检查 description 是否添加成功
-          if ! grep -q 'description: ' wy_modified.js; then
-            echo "::warning::description 添加失败"
+          if ! grep -q 'description:' wy_modified.js; then
+            echo "::error::description 添加失败"
+            exit 1
+          fi
+          
+          # 检查 description 后面是否有逗号
+          if ! grep -q 'description: .*,' wy_modified.js; then
+            echo "::error::description 后面缺少逗号"
+            exit 1
           fi
           
           mv wy_modified.js wy.js
@@ -203,7 +223,7 @@ jobs:
       - name: Replace srcUrl
         run: |
           # 设置新的 srcUrl
-          new_srcUrl="https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js"
+          new_srcUrl="https://raw.jgithub.xyz/lmlanmei64/MusicFreePlugins/master/plugins/wy.js"
           
           # 使用 Node.js 安全替换 srcUrl
           node -e "const fs = require('fs'); 
