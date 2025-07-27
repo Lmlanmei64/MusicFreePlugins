@@ -95,108 +95,112 @@ jobs:
             echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
           done
 
-      - name: Create and run Node.js replacement script
-        run: |
-          # 创建并直接运行 Node.js 替换脚本
-          node << 'EOF'
-          const fs = require('fs');
-          const path = require('path');
-          
-          // 读取源文件和函数定义
-          const sourceFile = fs.readFileSync('wy.js', 'utf-8');
-          const getLyricCode = fs.readFileSync('getLyric.txt', 'utf-8');
-          const getMusicCommentsCode = fs.readFileSync('getMusicComments.txt', 'utf-8');
-          
-          // 查找 axios 变量名
-          const axiosRegex = /const\s+(\w+)\s*=\s*require\s*\(\s*['"]axios['"]\s*\)/;
-          const axiosMatch = sourceFile.match(axiosRegex);
-          const axiosVar = axiosMatch ? axiosMatch[1] : 'axios';
-          console.log(`检测到axios变量名: ${axiosVar}`);
-          
-          // 定义替换函数
-          function replaceFunction(source, funcName, newCode) {
-            // 构建匹配函数签名的正则表达式
-            const signaturePattern = new RegExp(
-              `(async\\s+)?function\\s+${funcName}\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}`,
-              'g'
-            );
-            
-            // 尝试匹配原始函数
-            const matches = source.match(signaturePattern);
-            if (!matches || matches.length === 0) {
-              console.error(`未找到函数: ${funcName}`);
-              return source;
-            }
-            
-            // 替换函数中的 axios 变量名
-            const adjustedCode = newCode.replace(/axios/g, axiosVar);
-            
-            // 替换所有匹配项
-            return source.replace(signaturePattern, adjustedCode);
-          }
-          
-          // 执行所有替换
-          let modifiedContent = sourceFile;
-          modifiedContent = replaceFunction(modifiedContent, 'getLyric', getLyricCode);
-          modifiedContent = replaceFunction(modifiedContent, 'getMusicComments', getMusicCommentsCode);
-          
-          // 替换 appVersion
-          const appVersionRegex = /(appVersion\s*:\s*)(['"][^'"]*['"])/;
-          if (appVersionRegex.test(modifiedContent)) {
-            modifiedContent = modifiedContent.replace(appVersionRegex, '$1"<0.2.0-alpha"');
-            console.log('appVersion 替换成功');
-          } else {
-            console.warn('未找到 appVersion，已跳过替换');
-          }
-
-// 在 Node.js 替换脚本的末尾添加以下代码（在写入文件之前）
-// 添加 description 到 module.exports
-const descText = "本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的“元力WY”插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件“音源重定向”为“元力WY”）";
-
-// 检查 module.exports 是否存在
-if (modifiedContent.includes("module.exports")) {
-  // 在 module.exports 对象中添加 description 属性
-  modifiedContent = modifiedContent.replace(
-    /(module\.exports\s*=\s*\{)/,
-    `$1\n  description: ${JSON.stringify(descText)},`
-  );
-  console.log('已添加 description 到 module.exports');
-} else {
-  // 如果不存在 module.exports，则创建并添加
-  modifiedContent = modifiedContent + `\nmodule.exports = { description: ${JSON.stringify(descText)} };\n`;
-  console.log('已创建 module.exports 并添加 description');
-}
-          
-          // 写入修改后的文件
-          fs.writeFileSync('wy_modified.js', modifiedContent);
-          console.log('函数替换完成');
-          EOF
-          
-          # 验证替换结果
-          if [ ! -f wy_modified.js ]; then
-            echo "::error::修改后的文件未生成"
-            exit 1
-          fi
-          
-          if [ ! -s wy_modified.js ]; then
-            echo "::error::修改后的文件为空"
-            exit 1
-          fi
-          
-          # 检查替换后的函数是否正确
-          if ! grep -q "async function getLyric(musicItem) {" wy_modified.js; then
-            echo "::error::getLyric函数替换失败"
-            exit 1
-          fi
-          
-          # 检查 appVersion 是否替换成功
-          if ! grep -q 'appVersion: "<0.4.0-alpha"' wy_modified.js; then
-            echo "::warning::appVersion 替换失败或未找到"
-          fi
-          
-          mv wy_modified.js wy.js
-          echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
-
+- name: Create and run Node.js replacement script
+  run: |
+    # 创建并直接运行 Node.js 替换脚本
+    node << 'EOF'
+    const fs = require('fs');
+    const path = require('path');
+    
+    // 读取源文件和函数定义
+    const sourceFile = fs.readFileSync('wy.js', 'utf-8');
+    const getLyricCode = fs.readFileSync('getLyric.txt', 'utf-8');
+    const getMusicCommentsCode = fs.readFileSync('getMusicComments.txt', 'utf-8');
+    
+    // 查找 axios 变量名
+    const axiosRegex = /const\s+(\w+)\s*=\s*require\s*\(\s*['"]axios['"]\s*\)/;
+    const axiosMatch = sourceFile.match(axiosRegex);
+    const axiosVar = axiosMatch ? axiosMatch[1] : 'axios';
+    console.log(`检测到axios变量名: ${axiosVar}`);
+    
+    // 定义替换函数
+    function replaceFunction(source, funcName, newCode) {
+      // 构建匹配函数签名的正则表达式
+      const signaturePattern = new RegExp(
+        `(async\\s+)?function\\s+${funcName}\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}`,
+        'g'
+      );
+      
+      // 尝试匹配原始函数
+      const matches = source.match(signaturePattern);
+      if (!matches || matches.length === 0) {
+        console.error(`未找到函数: ${funcName}`);
+        return source;
+      }
+      
+      // 替换函数中的 axios 变量名
+      const adjustedCode = newCode.replace(/axios/g, axiosVar);
+      
+      // 替换所有匹配项
+      return source.replace(signaturePattern, adjustedCode);
+    }
+    
+    // 执行所有替换
+    let modifiedContent = sourceFile;
+    modifiedContent = replaceFunction(modifiedContent, 'getLyric', getLyricCode);
+    modifiedContent = replaceFunction(modifiedContent, 'getMusicComments', getMusicCommentsCode);
+    
+    // 替换 appVersion
+    const appVersionRegex = /(appVersion\s*:\s*)(['"][^'"]*['"])/;
+    if (appVersionRegex.test(modifiedContent)) {
+      modifiedContent = modifiedContent.replace(appVersionRegex, '$1">0.2.0-alpha"');
+      console.log('appVersion 替换成功');
+    } else {
+      console.warn('未找到 appVersion，已跳过替换');
+    }
+    
+    // 添加/更新 description
+    const descText = "本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的“元力WY”插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件“音源重定向”为“元力WY”）";
+    const descRegex = /(description\s*:\s*)(['"][^'"]*['"])/;
+    
+    if (descRegex.test(modifiedContent)) {
+      // 替换现有 description
+      modifiedContent = modifiedContent.replace(descRegex, `$1'${descText}'`);
+      console.log('description 替换成功');
+    } else {
+      // 添加新的 description
+      modifiedContent = modifiedContent.replace(
+        /(module\.exports\s*=\s*\{)([\s\S]*?)(\n\})/,
+        `$1$2,\n  description: '${descText}'$3`
+      );
+      console.log('description 添加成功');
+    }
+    
+    // 写入修改后的文件
+    fs.writeFileSync('wy_modified.js', modifiedContent);
+    console.log('函数替换完成');
+    EOF
+    
+    # 验证替换结果
+    if [ ! -f wy_modified.js ]; then
+      echo "::error::修改后的文件未生成"
+      exit 1
+    fi
+    
+    if [ ! -s wy_modified.js ]; then
+      echo "::error::修改后的文件为空"
+      exit 1
+    fi
+    
+    # 检查替换后的函数是否正确
+    if ! grep -q "async function getLyric(musicItem) {" wy_modified.js; then
+      echo "::error::getLyric函数替换失败"
+      exit 1
+    fi
+    
+    # 检查 appVersion 是否替换成功
+    if ! grep -q 'appVersion: ">0.2.0-alpha"' wy_modified.js; then
+      echo "::warning::appVersion 替换失败或未找到"
+    fi
+    
+    # 检查 description 是否添加成功
+    if ! grep -q 'description: ' wy_modified.js; then
+      echo "::warning::description 添加失败"
+    fi
+    
+    mv wy_modified.js wy.js
+    echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
+    
       - name: Replace srcUrl
         run: |
           # 设置新的 srcUrl
