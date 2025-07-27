@@ -646,8 +646,9 @@ module.exports = {
     author: '反馈Q群@365976134',
     version: "2025.01.22",
     appVersion: ">0.2.0-alpha",
-    srcUrl: "https://testingcf.jsdelivr.net/gh/Lmlanmei64/MusicFreePlugins@master/plugins/wy.js",
-    cacheControl: "no-store",
+    srcUrl: "https://raw.jgithub.xyz/lmlanmei64/MusicFreePlugins/master/plugins/wy.js",
+    
+  description: '本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的"元力WY"插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件"音源重定向"为"元力WY"）',cacheControl: "no-store",
     hints: {
         importMusicSheet: [
             "网易云：APP点击分享，然后复制链接",
@@ -716,6 +717,5 @@ module.exports = {
     getRecommendSheetsByTag,
     getMediaSource,
     getLyric,
-    getMusicComments,,
-  description: '本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的“元力WY”插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件“音源重定向”为“元力WY”）'
+    getMusicComments,
 };
