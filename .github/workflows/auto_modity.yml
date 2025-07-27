@@ -95,7 +95,7 @@ jobs:
             echo "$file 下载成功，大小: $(wc -c <"$file") 字节"
           done
 
-- name: Create and run Node.js replacement script
+      - name: Create and run Node.js replacement script
   run: |
     # 创建并直接运行 Node.js 替换脚本
     node << 'EOF'
@@ -200,7 +200,7 @@ jobs:
     
     mv wy_modified.js wy.js
     echo "函数替换成功，新文件大小: $(wc -c <wy.js) 字节"
-    
+
       - name: Replace srcUrl
         run: |
           # 设置新的 srcUrl
