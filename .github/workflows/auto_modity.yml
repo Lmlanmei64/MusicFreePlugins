@@ -79,8 +79,8 @@ jobs:
       - name: Download function definitions
         run: |
           # 使用新的 URL 下载函数定义文件
-          wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getLyric.txt"
-          wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/Lmlanmei64/MusicFreePlugins/master/getMusicComments.txt"
+          wget -O getLyric.txt "https://ghproxy.cn/raw.githubusercontent.com/LmLanmei64/MusicFreePlugins/master/getLyric.txt"
+          wget -O getMusicComments.txt "https://ghproxy.cn/raw.githubusercontent.com/LmLanmei64/MusicFreePlugins/master/getMusicComments.txt"
           
           # 验证下载结果
           for file in getLyric.txt getMusicComments.txt; do
@@ -223,7 +223,7 @@ jobs:
       - name: Replace srcUrl
         run: |
           # 设置新的 srcUrl
-          new_srcUrl="https://raw.jgithub.xyz/lmlanmei64/MusicFreePlugins/master/plugins/wy.js"
+          new_srcUrl="https://raw.jgithub.xyz/LmLanmei64/MusicFreePlugins/master/plugins/wy.js"
           
           # 使用 Node.js 安全替换 srcUrl
           node -e "const fs = require('fs'); 
