@@ -11,9 +11,26 @@ async function getLyric(musicItem) {
             }
         });
 
+        // 获取原始歌词和翻译
+        let rawLrc = response.data.lrc?.lyric || '';
+        let translation = response.data.tlyric?.lyric || '';
+        
+        // 修正时间轴格式：[00:00:000] -> [00:00.000]
+        if (rawLrc) {
+            rawLrc = rawLrc.replace(/\[(\d+):(\d+):(\d+)\]/g, (match, min, sec, ms) => {
+                return `[${min}:${sec}.${ms}]`;
+            });
+        }
+        
+        if (translation) {
+            translation = translation.replace(/\[(\d+):(\d+):(\d+)\]/g, (match, min, sec, ms) => {
+                return `[${min}:${sec}.${ms}]`;
+            });
+        }
+
         return {
-            rawLrc: response.data.lrc?.lyric || '',
-            translation: response.data.tlyric?.lyric || ''
+            rawLrc: rawLrc,
+            translation: translation
         };
     } catch (error) {
         console.error("获取歌词时出错:", error.message);
