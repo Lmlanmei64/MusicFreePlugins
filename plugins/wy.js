@@ -448,9 +448,26 @@ async function getLyric(musicItem) {
             }
         });
 
+        // 获取原始歌词和翻译
+        let rawLrc = response.data.lrc?.lyric || '';
+        let translation = response.data.tlyric?.lyric || '';
+        
+        // 修正时间轴格式：[00:00:000] -> [00:00.000]
+        if (rawLrc) {
+            rawLrc = rawLrc.replace(/\[(\d+):(\d+):(\d+)\]/g, (match, min, sec, ms) => {
+                return `[${min}:${sec}.${ms}]`;
+            });
+        }
+        
+        if (translation) {
+            translation = translation.replace(/\[(\d+):(\d+):(\d+)\]/g, (match, min, sec, ms) => {
+                return `[${min}:${sec}.${ms}]`;
+            });
+        }
+
         return {
-            rawLrc: response.data.lrc?.lyric || '',
-            translation: response.data.tlyric?.lyric || ''
+            rawLrc: rawLrc,
+            translation: translation
         };
     } catch (error) {
         console.error("获取歌词时出错:", error.message);
@@ -646,7 +663,7 @@ module.exports = {
     author: '反馈Q群@365976134',
     version: "2025.01.22",
     appVersion: ">0.2.0-alpha",
-    srcUrl: "https://raw.jgithub.xyz/lmlanmei64/MusicFreePlugins/master/plugins/wy.js",
+    srcUrl: "https://raw.jgithub.xyz/LmLanmei64/MusicFreePlugins/master/plugins/wy.js",
     
   description: '本插件修改于[ThomasBy2025/musicfree](https://github.com/ThomasBy2025/musicfree)\n配合[xujin621/Photo](https://gitee.com/xujin621/Photo)中的"元力WY"插件可播放会员歌曲的同时实现所有功能（需要在musicfree将该插件"音源重定向"为"元力WY"）',cacheControl: "no-store",
     hints: {
